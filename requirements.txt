@@ -1,0 +1,14 @@
+# Core
+numpy>=1.24
+opencv-python>=4.8
+PyYAML>=6.0
+# Detection / tracking (install a CUDA build of torch first for GPU, see README)
+ultralytics>=8.2
+# Live source
+yt-dlp>=2024.8.6
+# Dashboard
+streamlit>=1.37
+pandas>=2.0
+plotly>=5.18
+# Tests
+pytest>=7.4

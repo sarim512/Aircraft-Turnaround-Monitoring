@@ -1,0 +1,97 @@
+# Aircraft turnaround monitor - default configuration.
+# Relative paths resolve against the project root (override with $TURNAROUND_HOME).
+# ${ENV_VAR} placeholders are expanded, e.g. url: ${TURNAROUND_STREAM_URL}
+
+source:
+  kind: file                      # youtube | stream | file
+  uri: data/sample_turnaround.mp4 # YouTube page URL, stream URL, or video path
+  target_fps: 5.0                 # frames/s handed to the detector (5 is plenty for turnaround events)
+  max_height: 720                 # YouTube: preferred max video height
+  buffer_size: 2                  # live: bounded buffer, oldest frame dropped when full
+  read_timeout_s: 20.0
+  reconnect_initial_s: 2.0
+  reconnect_max_s: 60.0
+  realtime_pacing: false          # file replay: true = emit at real-time speed
+  loop: false                     # file replay: restart at EOF
+  start_time_iso: null            # file replay: wall-clock origin, e.g. "2026-01-01T08:00:00"
+
+model:
+  weights_path: weights/best.pt   # <- put your trained YOLOv8 weights here
+  device: auto                    # auto | cpu | cuda:0 | 0
+  half: null                      # null = FP16 on CUDA only
+  imgsz: 640
+  conf: 0.25                      # detector floor; per-service floors are in association.min_confidence
+  iou: 0.5
+  tracker_config: configs/bytetrack.yaml
+  max_det: 100
+
+classes:                          # model class names (case/space/hyphen-insensitive) or integer ids
+  aircraft: Aircraft
+  aerobridge: Bridge connected
+  cargo: Cargo loading-unloading
+  catering: Catering truck connected
+  pushback: Pushback tug connected
+
+roi:                              # draw polygons with: python scripts/select_roi.py
+  enabled: true
+  coordinate_mode: normalized     # normalized (0..1) | pixel (needs reference_resolution)
+  reference_resolution: null      # e.g. [1280, 720] for pixel mode
+  anchor: center                  # center | bottom_center
+  apply_to_aircraft: true
+  analysis_zone:
+    - [0.5711, 0.6056]
+    - [0.7469, 0.6097]
+    - [0.8859, 0.9708]
+    - [0.2281, 0.9014]               # e.g. [[0.05,0.20],[0.95,0.20],[0.95,0.95],[0.05,0.95]]
+  service_zones: {}               # optional, e.g. aerobridge: [[...],[...],[...]]
+
+scene_guard:                      # pauses analysis when the camera view changes (PTZ / camera switch)
+  enabled: true
+  reference_image: null
+  thumbnail_size: [96, 54]
+  change_threshold: 0.30
+  recover_threshold: 0.55
+  trigger_frames: 3
+  recover_frames: 3
+  reference_blend: 0.02
+
+aircraft:
+  min_confidence: 0.40
+  confirm_hits: 3                 # detections before an aircraft opens a session
+  tentative_timeout_s: 3.0
+  lost_timeout_s: 120.0           # unseen this long -> aircraft departed -> session closes
+  reid_iou_threshold: 0.30        # re-attach new tracker ids to a recently lost aircraft
+  duplicate_iou_threshold: 0.80
+
+association:
+  aircraft_box_margin: 0.15       # enlarge aircraft boxes before the overlap test
+  min_equipment_overlap: 0.20     # share of the equipment box that must lie on the aircraft
+  min_confidence:                 # per-service confidence floors
+    aerobridge: 0.35
+    catering: 0.35
+    cargo: 0.35
+    pushback: 0.35
+
+temporal:
+  max_gap_s: 3.0                  # stalls/pauses are credited at most this many seconds
+  partial_start_window_s: 5.0
+  defaults:
+    on_window_s: 3.0              # n-of-m activation window
+    on_min_hits: 4                # positives inside the window needed to activate
+    off_grace_s: 8.0              # occlusion tolerance before release
+    min_interval_s: 5.0           # shorter intervals are retracted as false triggers
+  overrides: {}                   # e.g. pushback: {off_grace_s: 5.0}
+
+storage:
+  db_path: data/turnaround.db
+
+output:
+  runtime_dir: runtime            # latest.jpg + status.json for the dashboard
+  publish_interval_s: 0.5
+  jpeg_quality: 80
+  draw_rejected: false
+  record_path: null               # e.g. data/annotated.mp4
+
+logging:
+  level: INFO
+  file: null                      # e.g. data/pipeline.log

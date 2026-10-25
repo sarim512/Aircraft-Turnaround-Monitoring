@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aircraft-turnaround-monitor"
+version = "1.0.0"
+description = "Real-time aircraft turnaround monitoring (YOLOv8 + ByteTrack + temporal state machine)"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.24", "opencv-python>=4.8", "PyYAML>=6.0", "ultralytics>=8.2",
+  "yt-dlp>=2024.8.6", "streamlit>=1.37", "pandas>=2.0", "plotly>=5.18",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+turnaround = ["storage/schema.sql"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "scripts", "tools"]
+testpaths = ["tests"]
